@@ -1,0 +1,9 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: prueba-binding
+  namespace: tekton
+spec:
+  params:
+    - name: who
+      value: $(body.who)

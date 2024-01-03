@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: prueba
+spec:
+  params:
+    - name: who
+      type: string
+  steps:
+    - env:
+        - name: WHO
+          value: $(inputs.params.who)
+      image: registry.redhat.io/ubi7/ubi-minimal
+      name: saludar
+      resources: {}
+      script: |
+        echo "hola $WHO"

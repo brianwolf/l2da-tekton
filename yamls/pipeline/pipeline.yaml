@@ -1,0 +1,21 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  generation: 1
+  name: prueba
+spec:
+  params:
+    - default: nadie
+      description: saludar a quien
+      name: who
+      type: string
+  tasks:
+    - name: prueba
+      params:
+        - name: who
+          value: $(params.who)
+      taskRef:
+        kind: ClusterTask
+        name: prueba
+  workspaces:
+    - name: workspace

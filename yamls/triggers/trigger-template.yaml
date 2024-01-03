@@ -1,0 +1,23 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: prueba-template
+spec:
+  params:
+  - name: who
+    description: a quien va el saludo
+    default: nadie
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      generateName: prueba-triggered-
+    spec:
+      pipelineRef:
+        name: prueba
+      params:
+      - name: who
+        value: $(tt.params.who)
+      workspaces:
+      - name: workspace
+        emptyDir: {}

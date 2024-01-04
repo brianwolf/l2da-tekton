@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: tekton
+  name: jenkins
+  labels:
+    app: jenkins
+spec:
+  selector:
+    matchLabels:
+      app: jenkins
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      volumes:
+        - name: jenkins
+          persistentVolumeClaim:
+              claimName: jenkins
+      containers:
+        - name: container
+          image: >-
+            docker.io/jenkins/jenkins:latest
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env: []
+          volumeMounts:
+            - mountPath: /var/jenkins_home
+              name: jenkins
+      imagePullSecrets: []
+
+---
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: jenkins
+  namespace: tekton
+  labels:
+    app: jenkins
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: thin
+  volumeMode: Filesystem
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins
+  namespace: tekton
+  labels:
+    app: jenkins
+spec:
+  selector:
+    app: jenkins
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+
+---
+
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: jenkins
+  namespace: tekton
+  labels:
+    app: jenkins
+spec:
+  to:
+    kind: Service
+    name: jenkins
+    weight: 100
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

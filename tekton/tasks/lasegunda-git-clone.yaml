@@ -1,0 +1,43 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: test-lasegunda-git-clone
+  labels:
+    owner: lasegunda
+spec:
+  params:
+    - description: Name of application to deploy in openshift
+      name: project
+      type: string
+    - description: Url of git repository with project code
+      name: git-url
+      type: string
+  steps:
+    - image: docker.io/alpine/git:v2.26.2
+      name: git-clone
+      resources: {}
+      script: >
+        PROJECT=$(parmas.project)
+        URL=$(parmas.git-url)
+        GIT_USER=$(cat $(workspaces.secret.path)/GIT_USER)
+        GIT_USER=$(cat $(workspaces.secret.path)/GIT_PASS)
+
+        rm -fr $PROJECT
+
+        URL_WITH_CREDENTIALS="https://"${GIT_USER}:${GIT_PASS}@${URL#"https://"}
+
+        echo "git clone -b $BRANCH $URL_WITH_CREDENTIALS $PROJECT"
+        git clone -b $BRANCH $URL_WITH_CREDENTIALS $PROJECT
+
+        echo "Making file with git credentials"
+        cat <<EOF > .git/config
+          [remote "origin"]
+            url = $URL_WITH_CREDENTIALS
+        EOF
+
+      workingDir: $(workspaces.workspace.path)
+  workspaces:
+    - description: Workspace to clone and work in the project
+      name: workspace
+    - description: Secret with all credententials needed
+      name: secret

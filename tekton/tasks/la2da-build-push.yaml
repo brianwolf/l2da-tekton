@@ -1,0 +1,51 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: la2da-build-push
+  labels:
+    owner: la2da
+    app: tekton
+spec:
+  params:
+    - description: Name of application to deploy in openshift
+      name: project
+      type: string
+  steps:
+    - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:a652e2fec41694745977d385c845244db3819acca926d85a52c77515f1f2e612
+      name: build-push
+      resources: {}
+      script: >
+        PROJECT=$(params.project)
+        QUAY_URL=$(params.project)
+        QUAY_USER=$(cat $(workspaces.secret.path)/QUAY_USER)
+        QUAY_PASS=$(cat $(workspaces.secret.path)/QUAY_PASS)
+
+        cd $PROJECT
+
+        VERSION=$(grep -oPm1 "(?<=<version>)[^<]+" pom.xml)
+
+        echo "Build new image $QUAY_URL/$QUAY_USER/$PROJECT:$VERSION"
+        buildah --storage-driver=vfs build \
+            --format=docker \
+            --tls-verify=false \
+            --no-cache \
+            -f Dockerfile \
+            -t $QUAY_URL/$QUAY_USER/$PROJECT:$VERSION \
+            .
+
+        echo "Login in Quay"
+        buildah login --tls-verify=false -u $QUAY_USER -p $QUAY_PASS $QUAY_URL
+
+        echo "Push new image $QUAY_URL/$QUAY_USER/$PROJECT:$VERSION"
+        buildah --storage-driver=vfs push \
+            --tls-verify=false \
+            $QUAY_URL/$QUAY_USER/$PROJECT:$VERSION \
+            docker://$QUAY_URL/$QUAY_USER/$PROJECT:$VERSION
+
+
+      workingDir: $(workspaces.workspace.path)
+  workspaces:
+    - description: Workspace to clone and work in the project
+      name: workspace
+    - description: Secret with all credententials needed
+      name: secret

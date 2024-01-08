@@ -1,20 +1,21 @@
 apiVersion: tekton.dev/v1beta1
 kind: ClusterTask
 metadata:
-  name: test-lasegunda-git-clone
+  name: la2da-git-tag
   labels:
-    owner: lasegunda
+    owner: la2da
+    app: tekton
 spec:
   params:
     - description: Name of application to deploy in openshift
       name: project
       type: string
   steps:
-    - image: docker.io/alpine/git:v2.26.2
-      name: git-clone
+    - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:a652e2fec41694745977d385c845244db3819acca926d85a52c77515f1f2e612
+      name: git-tag
       resources: {}
       script: >
-        PROJECT=$(parmas.project)
+        PROJECT=$(params.project)
 
         cd $PROJECT
 

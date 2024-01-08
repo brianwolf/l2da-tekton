@@ -1,0 +1,207 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: la2da-maven
+  labels:
+    owner: la2da
+    app: tekton
+spec:
+  params:
+    - description: Name of application to deploy in openshift
+      name: project
+      type: string
+  steps:
+    - image: registry.access.redhat.com/ubi8/openjdk-17@sha256:0d12c4097e098b62f78a7a31c0d711d78e1e5a53f4c007b9a5fc6cc6ab4dc018
+      name: maven
+      resources: {}
+      script: >
+        PROJECT=$(params.project)
+        M2_WORKSPACE=$(workspaces.m2.path)
+        NEXUS_USER=$(cat $(workspaces.secret.path)/NEXUS_USER)
+        NEXUS_PASS=$(cat $(workspaces.secret.path)/NEXUS_PASS)
+
+        cd $PROJECT
+
+        echo "Making settings.xml temp file"
+        cat <<EOF > settings.xml
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+            
+            <localRepository>$M2_WORKSPACE/.m2</localRepository>
+            
+            <profiles>
+              <profile>
+                <id>fuse.repos</id>
+                <repositories>
+                  <repository>
+                    <id>maven.central</id>
+                    <name>Maven Central</name>
+                    <url>https://repo1.maven.org/maven2</url>
+                    <snapshots>
+                      <enabled>false</enabled>
+                    </snapshots>
+                    <releases>
+                      <enabled>true</enabled>
+                      <updatePolicy>never</updatePolicy>
+                    </releases>
+                  </repository>
+                  <repository>
+                    <id>nexus.lasegunda.snapshot</id>
+                    <name>Nexus La Segunda</name>
+                    <url>https://nexus.papps.lasegunda.com.ar/repository/maven-snapshots/</url>
+                    <snapshots>
+                      <enabled>true</enabled>
+                    </snapshots>
+                    <releases>
+                      <enabled>false</enabled>
+                      <updatePolicy>never</updatePolicy>
+                    </releases>
+                  </repository>
+                  <repository>
+                    <id>nexus.lasegunda.terceros</id>
+                    <name>Nexus La Segunda</name>
+                    <url>https://nexus.papps.lasegunda.com.ar/repository/maven-terceros/</url>
+                    <snapshots>
+                      <enabled>false</enabled>
+                    </snapshots>
+                    <releases>
+                      <enabled>true</enabled>
+                      <updatePolicy>never</updatePolicy>
+                    </releases>
+                  </repository>
+                  <repository>
+                    <id>nexus.lasegunda.release</id>
+                    <name>Nexus La Segunda</name>
+                    <url>https://nexus.papps.lasegunda.com.ar/repository/maven-releases/</url>
+                    <snapshots>
+                      <enabled>false</enabled>
+                    </snapshots>
+                    <releases>
+                      <enabled>true</enabled>
+                      <updatePolicy>never</updatePolicy>
+                    </releases>
+                  </repository>
+                  <repository>
+                    <id>maven.central</id>
+                    <name>Maven Central</name>
+                    <url>https://repo1.maven.org/maven2</url>
+                    <snapshots>
+                      <enabled>false</enabled>
+                    </snapshots>
+                    <releases>
+                      <enabled>true</enabled>
+                      <updatePolicy>never</updatePolicy>
+                    </releases>
+                  </repository>
+                  <repository>
+                    <id>redhat.ga</id>
+                    <name>Red Hat General Availability Repository</name>
+                    <url>https://maven.repository.redhat.com/ga</url>
+                    <snapshots>
+                      <enabled>false</enabled>
+                    </snapshots>
+                    <releases>
+                      <enabled>true</enabled>
+                      <updatePolicy>never</updatePolicy>
+                    </releases>
+                  </repository>
+                  <repository>
+                    <id>ms.archetypes</id>
+                    <url>https://nexus.papps.lasegunda.com.ar/repository/ms-archetypes/</url>
+                  </repository>
+                  <repository>
+                    <id>ms.pom.releases</id>
+                    <url>https://nexus.papps.lasegunda.com.ar/repository/ms-pom-releases/</url>
+                  </repository>
+                </repositories>
+                <pluginRepositories>
+                  <pluginRepository>
+                    <id>maven.central</id>
+                    <name>Maven Central</name>
+                    <url>https://repo1.maven.org/maven2</url>
+                    <snapshots>
+                      <enabled>false</enabled>
+                    </snapshots>
+                    <releases>
+                      <enabled>true</enabled>
+                      <updatePolicy>never</updatePolicy>
+                    </releases>
+                  </pluginRepository>
+                  <pluginRepository>
+                    <id>redhat.ga</id>
+                    <name>Red Hat General Availability Repository</name>
+                    <url>https://maven.repository.redhat.com/ga</url>
+                    <snapshots>
+                      <enabled>false</enabled>
+                    </snapshots>
+                    <releases>
+                      <enabled>true</enabled>
+                      <updatePolicy>never</updatePolicy>
+                    </releases>
+                  </pluginRepository>
+                  <pluginRepository>
+                    <id>redhat.ea</id>
+                    <name>Red Hat Early Access Repository</name>
+                    <url>https://maven.repository.redhat.com/earlyaccess/all</url>
+                    <snapshots>
+                      <enabled>false</enabled>
+                    </snapshots>
+                    <releases>
+                      <enabled>true</enabled>
+                      <updatePolicy>never</updatePolicy>
+                    </releases>
+                  </pluginRepository>
+                </pluginRepositories>
+              </profile>
+            </profiles>
+
+            <activeProfiles>
+              <activeProfile>fuse.repos</activeProfile>
+            </activeProfiles>
+
+            <servers>
+              <server>
+                <id>nexus.lasegunda.snapshot</id>
+                <username>$NEXUS_USER</username>
+                <password>$NEXUS_PASS</password>
+              </server>
+              <server>
+                <id>nexus.lasegunda.terceros</id>
+                <username>$NEXUS_USER</username>
+                <password>$NEXUS_PASS</password>
+              </server>
+              <server>
+                <id>nexus.lasegunda.release</id>
+                <username>$NEXUS_USER</username>
+                <password>$NEXUS_PASS</password>
+              </server>
+              <server>
+                <id>ms.archetypes</id>
+                <username>$NEXUS_USER</username>
+                <password>$NEXUS_PASS</password>
+              </server>
+              <server>
+                <id>ms.pom.releases</id>
+                <username>$NEXUS_USER</username>
+                <password>$NEXUS_PASS</password>
+              </server>
+            </servers>
+          </settings>
+        EOF
+
+        echo "/usr/bin/mvn -DskipTests clean package -gs settings.xml"
+        /usr/bin/mvn -DskipTests clean package -gs settings.xml
+
+        echo "Delete settings.xml temp file"
+        rm -fr settings.xml
+
+      workingDir: $(workspaces.workspace.path)
+  workspaces:
+    - description: Workspace to clone and work in the project
+      name: workspace
+    - description: Secret with all credententials needed
+      name: secret
+    - description: Workspace to maven m2 
+      name: m2

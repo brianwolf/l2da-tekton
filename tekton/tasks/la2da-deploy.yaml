@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: la2da-deploy
+  labels:
+    owner: la2da
+    app: tekton
+spec:
+  params:
+    - description: Name of application to deploy in openshift
+      name: project
+      type: string
+    - description: Environment to deploy, it can be [develop, test, uat, prod]
+      name: environment
+      type: string
+  steps:
+    - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:a652e2fec41694745977d385c845244db3819acca926d85a52c77515f1f2e612
+      name: deploy
+      resources: {}
+      script: >
+        PROJECT=$(params.project)
+        ENVIRONMENT=$(params.environment)
+
+        cd $PROJECT
+
+        VERSION=$(grep -oPm1 "(?<=<version>)[^<]+" pom.xml)
+
+        echo "Replacing kustomize file for environment $ENVIRONMENT"
+        sed -i "s/newName: \S*/newName: $QUAY_URL\/$QUAY_USER\/$PROJECT/g" .devops/openshift/app/kustomize/overlays/$ENVIRONMENT/kustomization.yaml
+        sed -i "s/newTag: \S*/newTag: $VERSION/g" .devops/openshift/app/kustomize/overlays/$ENVIRONMENT/kustomization.yaml
+
+        echo "Deploy in $ENVIRONMENT new version $VERSION"
+        git add .
+        git commit -m "Deploy in $ENVIRONMENT version $NEW_VERSION"
+        git push origin
+
+      workingDir: $(workspaces.workspace.path)
+  workspaces:
+    - description: Workspace to clone and work in the project
+      name: workspace
+    - description: Secret with all credententials needed
+      name: secret

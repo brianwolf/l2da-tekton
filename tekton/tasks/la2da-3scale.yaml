@@ -1,0 +1,50 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: la2da-3scale
+  labels:
+    owner: la2da
+    app: tekton
+spec:
+  params:
+    - description: Name of application to deploy in openshift
+      name: project
+      type: string
+    - description: Environment to deploy, it can be [develop, test, uat, prod]
+      name: environment
+      type: string
+    - description: Url from python-3scale-tool git repo
+      name: python-git-url
+      type: string
+  steps:
+    - image: registry.redhat.io/rhel8/python-311@sha256:2a67089135f15b63ab24782c3b86c64ba97051eb8d853dc241631f3e8aef15f1
+      name: 3scale
+      resources: {}
+      script: >
+        PROJECT=$(params.project)
+        ENVIRONMENT=$(params.environment)
+        GIT_USER=$(cat $(workspaces.secret.path)/GIT_USER)
+        GIT_PASS=$(cat $(workspaces.secret.path)/GIT_PASS)
+        PYTHON_GIT_URL=$(params.python-git-url)
+        PYTHON_REPO_PATH=/tmp/python-3scale
+        THREESCALE_TOKEN=$(workspaces.secret.path)/$THREESCALE_TOKEN
+        THREESCALE_URL=$(workspaces.secret.path)/$THREESCALE_URL
+
+        URL_WITH_CREDENTIALS="https://"${GIT_USER}:${GIT_PASS}@${PYTHON_GIT_URL#"https://"}
+        git clone $URL_WITH_CREDENTIALS $PYTHON_REPO_PATH
+
+        cd $PYTHON_REPO_PATH
+        
+        export REPO_PATH=$(workspaces.workspace.path)/$PROJECT
+        export URL_BASE=$THREESCALE_URL
+        export TOKEN=$THREESCALE_TOKEN
+        export APP_ENV=$ENVIRONMENT
+
+        python3 app.py
+
+      workingDir: $(workspaces.workspace.path)
+  workspaces:
+    - description: Workspace to clone and work in the project
+      name: workspace
+    - description: Secret with all credententials needed
+      name: secret

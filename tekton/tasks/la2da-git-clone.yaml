@@ -21,7 +21,8 @@ spec:
         PROJECT=$(params.project)
         URL=$(params.git-url)
         GIT_USER=$(cat $(workspaces.secret.path)/GIT_USER)
-        GIT_USER=$(cat $(workspaces.secret.path)/GIT_PASS)
+        GIT_PASS=$(cat $(workspaces.secret.path)/GIT_PASS)
+        BRANCH=develop
 
         rm -fr $PROJECT
 
